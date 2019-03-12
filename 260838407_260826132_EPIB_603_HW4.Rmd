@@ -133,7 +133,7 @@ bomb.data
 
 #lambda = n * p 
 
-#I thought of this while falling asleep...not good. Gives zeros.
+#from Iris. Yep, this is the answer
 dbinom(0:5, tot.areas, mean.hits/tot.areas)
 mean.hits
 
@@ -176,8 +176,30 @@ str(q2.data)
 
 #is there any association between year and army unit....like just those or those and events?!
 summary(glm(data = q2.data, formula = year ~ corp, family = gaussian))
-summary(glm(data = q2.data, formula = y ~ year + corp, family = poisson(link = "log")))
+q2.multi.reg <- glm(data = q2.data, formula = y ~ year + corp, family = poisson(link = "log"))
+summary(q2.multi.reg)
+q2.confints <- exp(confint(q2.multi.reg))
 
+#there's gotta be a better way to do this, but I'll leave that to a better person to figure out. Plotting all the upper and lower limits to see what the CIs look like wrt to the null (ie: 1)
+str(q2.confints)
+
+nrow(q2.confints)
+q2.confints <- as.data.frame(q2.confints)
+str(q2.confints)
+
+
+library(tidyr)
+
+q2.confint.plot <- gather(q2.confints, q2.confints$`2.5 %`)
+colnames(q2.confint.plot) <- c("limit", "value")
+q2.confint.plot$limit <- as.factor(q2.confint.plot$limit)
+q2.confint.plot$row <- as.factor(rep(1:15, 2))
+q2.confint.plot
+str(q2.confint.plot)
+
+ggplot(data = q2.confint.plot, aes(y = row, x = value, color = q2.confint.plot$limit)) + geom_point() + geom_vline(xintercept = 1) + geom_vline(xintercept = 1.5, color = "red", linetype = 3) + geom_vline(xintercept = 0.5, color = "red", linetype = 3)+ labs(title = "Overview of Corp and Year Associations with Deaths", subtitle = "glm Coefficients" ,  y = "Coefficients", x = "RR", color = "95% CI Limits") + geom_line(aes(group = q2.confint.plot$row), color = "black")
+
+#they all cross 1, so inconclusive...buuuuut based on the graph and the arbitrary "clinical importance" of .5-1.5, there may be some potentially interesting relationships
 
 #each 20 year period for the 14 coprs to be 280 independnet units? Is each year an independent unit? Or each 20 year period an independent unit? I'm assuming each year
 mean(q2.data$y)
@@ -448,6 +470,22 @@ summary(reg.qua.q7)
 #what the difference? Like nothing, right?
 min(reg.qua.q7$coefficients - reg.multi.q4$coefficients)
 
+#the absolute width of the CI for white estimate
+#get the se
+sum.multi <- summary(reg.multi.q4)
+sum.multi
+log.se.white <- sum.multi$coefficients[3,2]
+log.se.white * 1.96 * c(-1,1) + sum.multi$coefficients[3,1]
+
+abs.CI.width <- exp(diff(log.se.white * 1.96 * c(-1,1) + sum.multi$coefficients[3,1]))
+
+#numbrs from the confint() CI....slightly diferent upper limit....wtf
+exp(-0.437781973 + 0.400795089)
+sum.eth <- summary(reg.eth.q4)
+
+
+
+confint(reg.multi.q4)[3]
 
 
 ```
