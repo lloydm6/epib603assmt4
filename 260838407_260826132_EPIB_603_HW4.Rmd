@@ -1,0 +1,458 @@
+---
+title: "Assignment 4 2019 Questions"
+subtitle: "Poisson Regression "
+author: "Iris Gasner and Marhsall Lloyd"
+date: "Winter 2019"
+output:
+  html_document:
+    css: lab.css
+    highlight: tango
+    theme: cerulean
+    toc: yes
+    toc_float: yes
+  pdf_document:
+    toc: yes
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+<div id="instructions">
+Submit answers as **zipped, html files**. Grading is based on the points allocated for each question and an extra 5 points for overall style, organization, and clarity. Marks per question are indicated in each question. 
+
+</div>
+
+## Question 1 - 16 points
+During the bombing of London during World War II a question  was to determine whether the Germans were bombing randomly or could target specific areas. Certainly this crude map may suggest that the bombs fell in a non-random manner.   
+![](London_Fooled_1.png)      
+In fact, more detailed information about the London bombing exists. London was divided into a number of small grids, each of area 0.25 square kilometers, and the number of bombs that landed in each grid square was counted. The data `V1` can be found in the `VGAM` package.     
+We will try and quantitatively assess the question of whether bombs fell randomly using a Poisson distribution.
+
+```{r}
+
+
+```
+}}
+
+<div id="exercise">
+**Exercise**: 
+a) Display the the frequency data. (2 points)
+b) There is a possible data entry error. Replace the 1 area with 7 hits with 5 (2 points)    
+b) How many grids are there? How many total bombs fell? (4 points)    
+c) Comparing the number of grids with 0,1,2,3,4,5 bombs predicted from a Poisson distribution with what was observed, does this suggest the bombs were falling randomly? (4 points)     
+d) Since the Poisson approximates the binomial when the event rate is small, show the expected number of hits using `dbinom` (2 points)      
+e) What is the probability that an area will have received exactly 2 bomb hits (2 points)
+
+</div>
+
+```{r}
+# insert R code here
+#install.packages("VGAM")
+library(VGAM)
+
+#just making my own
+bomb.data <- V1
+
+#display the data
+bomb.data
+
+#replace the 7 with a 5
+bomb.data[6, 1] <- 5
+
+bomb.data
+
+#how many grid areas are there? This is a table that counts the number (freq) of areas with each number of hits (hits), so this should be sunm of freq
+tot.areas <- sum(bomb.data[ , 2])
+
+#total bombs that fell, need to multiply the number of hits by the freq of occurence and then sum
+tot.hits <- sum(bomb.data[,1] * bomb.data[, 2])
+
+#if it were poisson
+mean.hits <- tot.hits/tot.areas
+
+#get the expected by multiplying the total hits by the prob of each freqs according poisson
+tot.areas * dpois(0:5, mean.hits)
+
+#new column of exp hits
+bomb.data$exp.freq <- round(tot.areas * dpois(0:5, mean.hits), 1)
+
+bomb.data$obs.hits <- bomb.data$hits * bomb.data$ofreq
+
+bomb.data$exp.hits <- bomb.data$hits * bomb.data$exp.freq
+
+#SMR of tot obs hits by exp
+bomb.SMR <- sum(bomb.data$obs.hits) / sum(bomb.data$exp.hits)
+
+bomb.SMR
+
+#get a CI for obs hits
+bomb.poi.test <- poisson.test(sum(bomb.data$obs.hits), 1) 
+bomb.poi.test
+
+#divide by exp hits, check this though....doesn't feel right but looks like it is following his slides
+bomb.SMR.CI <- round(bomb.poi.test$conf.int / sum(bomb.data$exp.hits), 2)[1:2]
+
+bomb.SMR.CI
+
+#or do chi sq test? took this from 607 final project. It gives zero, which probably means I'm doing it wrong
+chi.bomb <- sum((bomb.data$ofreq - bomb.data$exp.hits)^2/bomb.data$exp.hits)
+
+pchisq(chi.bomb, df = 5, lower.tail = F)
+
+#initial try, not right
+round(dbinom(0:5, 5, mean.hits), 2)
+
+mean.hits
+
+?dbinom
+?dpois
+
+#this gives a closer looking probs....I just divided by 5
+round(dbinom(0:5, 5, mean.hits/5), 3)
+
+bomb.data$bin.exp <- round(dbinom(0:5, 5, mean.hits/5) * tot.areas, 1)
+
+bin.exp.hits <- sum(bomb.data$bin.exp)
+
+bomb.data
+bin.exp.hits
+
+#just messing around to see if the answers get closer with smaller p
+dpois(1, 0.2)
+dbinom(1, 5, 0.2/5)
+
+dpois(1, 0.5)
+dbinom(1, 5, 0.5/5)
+
+dpois(1, 0.9)
+dbinom(1, 5, 0.9/5)
+
+bomb.data
+
+#lambda = n * p 
+
+#I thought of this while falling asleep...not good. Gives zeros.
+dbinom(0:5, tot.areas, mean.hits/tot.areas)
+mean.hits
+
+#prob an area gets exactly 2 hits. 
+two.bombs <- dpois(2, mean.hits)
+
+```
+
+
+<div id="body">
+**Type your answer here:**   
+a) display it
+b) done
+b) `r tot.hits` and `r tot.areas`
+c) obs over expected is `r bomb.SMR` with 95% CI of `r bomb.SMR.CI`
+d) not sure
+e) `r two.bombs`
+
+</div>   
+
+## Question 2 - 15 points
+Another classic example of the Poisson distribution is the number of deaths due to horse kicks occurring in the Prussian army in the 19th century. The number of deaths was collected annually over a 20 year period and involved 14 army units. The data can be found in the `prussian` file in the `pscl` library.  
+<div id="exercise">
+**Exercise**:     
+a) Using `glm` is there any assocaition between year and army unit? (3 points)   
+b) Consider each 20 year period for the 14 army corps to be 280 independent units, compare the observed frequency of deaths to that calculated by a Poisson distribution. (3 points)       
+c) Using your graphical skills, plot a histogram of the observed deaths and wth red points for the calculated Poisson counts (5 points)     
+d) Do you believe the deaths are distributed as a Poisson random variable? (2 points)
+e) To get 95% CI around an observed value use `poisson.test`. What is the 95% CI for the observed data of 1 death occurring in 91 units? (2 points)
+
+</div>
+
+```{r}
+# insert R code here
+#install.packages("pscl")
+library(pscl)
+
+q2.data <- prussian
+str(q2.data)
+
+#is there any association between year and army unit....like just those or those and events?!
+summary(glm(data = q2.data, formula = year ~ corp, family = gaussian))
+summary(glm(data = q2.data, formula = y ~ year + corp, family = poisson(link = "log")))
+
+
+#each 20 year period for the 14 coprs to be 280 independnet units? Is each year an independent unit? Or each 20 year period an independent unit? I'm assuming each year
+mean(q2.data$y)
+
+library(dplyr)
+?count()
+
+#make a freq table
+kick.freq <- count(q2.data, y)
+
+#expected freq if it were poisson, the poisson probs times the total number of corps years (280)
+kick.freq$exp <- sum(kick.freq[,2])*dpois(0:4, mean(q2.data$y))
+
+#total oberved kicks and expected kicks
+kick.freq$obs.kicks <- kick.freq$y * kick.freq$n
+kick.freq$exp.kicks <- kick.freq$y * kick.freq$exp
+
+#checks out
+sum(q2.data$y)
+sum(kick.freq$obs.kicks)
+
+kick.freq
+
+#compare observed to expected. It's very poisson. Not sure if I should do a 95% CI too. 
+kick.SMR <- sum(kick.freq$obs.kicks) / sum(kick.freq$exp.kicks)
+kick.SMR
+
+
+
+#make a graph
+library(ggplot2)
+
+ggplot(data = q2.data) + geom_histogram(aes(x = q2.data$y)) 
+ggplot() + geom_point(aes(x = kick.freq$y, y = kick.freq$exp))
+ggplot(data = q2.data, aes(x = q2.data$y)) + geom_histogram() + geom_point(data = kick.freq, aes(x = kick.freq$y, y = kick.freq$exp))
+
+
+# do i believe? yes..I guess
+
+#get a CI for obs hits...this is from previous question
+kick.poi.test <- poisson.test(sum(kick.freq$n), 1) 
+kick.poi.test
+
+#divide by exp hits, check this though....doesn't feel right but looks like it is following his slides
+kick.SMR.CI <- round(kick.poi.test$conf.int / sum(kick.freq$exp), 2)[1:2]
+kick.SMR.CI
+
+```
+
+
+<div id="body">
+**Type your answer here:**    
+
+</div>  
+
+## Question 3 - 5 points
+You may often want to compare two rates. To do this, I provide a function `poisson_rate` that you can source in and then use. For example suppose the death rate following cardiac surgery in hospital A is 1 in 332 operations and in hospital B it is 12 in 600 operations. 
+<div id="exercise">
+**Exercise**:     
+a) Are the differences statistically significant? (5 points)
+</div>
+
+```{r}
+# insert R code here
+poisson.rate<-function(events,pyrs) {
+    
+    rate<-events/pyrs
+    ll.95<-exp(log(rate)-1.96*(1/events))
+    ul.95<-exp(log(rate)+1.96*(1/events))
+    
+    print(cbind(rate,ll.95,ul.95))
+    
+    l<-length(events)
+    
+    diff<-matrix(NA,l,l)
+    ll.diff.95<-matrix(NA,l,l)
+    ul.diff.95<-matrix(NA,l,l)
+    chi<-matrix(NA,l,l)
+    
+    for (i in 1:(l-1)) {
+        for (j in 2:l) {
+            
+            diff[i,j]<-rate[i]-rate[j]
+            totevents<-events[i]+events[j]
+            totpyrs<-pyrs[i]+pyrs[j]
+            chi[i,j]<-(events[i]-pyrs[i]*totevents/totpyrs)/sqrt(totevents*pyrs[i]*pyrs[j]/totpyrs^2)
+            ll.diff.95[i,j]<-diff[i,j]*(1-1.96/chi[i,j])
+            ul.diff.95[i,j]<-diff[i,j]*(1+1.96/chi[i,j])
+            
+        }
+    }
+    
+    print(paste("Incidence rate difference is ", round(diff[1,2],3), "with 95% CI of ", 
+                round(ll.diff.95[1,2],3), "-", round(ul.diff.95[1,2],3)))
+    
+    
+    print(paste("Chi-square = ",round(chi[1,2]^2,3), "p = ", round(1-pchisq(chi[1,2]^2,1),3),
+                "(H0: No difference vs. H1: Difference)"))
+}
+
+poisson.rate(c(1, 12), c(332, 600))
+ 
+```
+
+<div id="body">
+**Type your answer here:**    
+
+The differences are significantly different. 
+
+</div>   
+
+## Question 4 - 25 points
+A Poisson model considers $y_{i}$ to be the number of counts in a specified setting. This is usually expressed as $$y_{i} \backsim Poisson(\mu_{i}\theta_{i})$$. Since the number of counts can only be positive it makes sense to model $\theta_{i} = exp (XB)$.
+
+The $\beta$ coefficient interpretations are 1) intercept is the value when all predictors are set to 0. Often this is not of any clinical use and is not considered further. The $\beta$ coefficients for the predictors represent how much the logarithm of the outcome varies for a 1 unit change in the predictor.  
+In many cases counts are most sensibly interpreted in the context of some baseline exposure. In this setting the logarithm of the exposure, $\mu{i}$ is termed the offset.   
+This example will use the `police1.txt` dataset which is found on mycourses. The data includes the number of  times a member of a specific ethnic group is stopped and frisked in a specific precinct ( i = 1,2,3 .... 75 *3) where precincts are numbered 1-75 and ethnicity  is 1=black, 2=hispanic, 3=white. The dataset also gives the ethnic population, past number of arrests and the crime type  (1=violent, 2=weapons, 3=property, 4=drug). The question is whether thier is evidence of ethnic discrimination in the stopping of suspects. In this example, it makes sense to consider the baseline rate or `exposure` to be the number of past arrests in the preceding year according to ethnic group and this will become the offset. 
+
+<div id="exercise">
+**Exercise**:      
+a) Load the required libraries `dplyr`, `ggplot2` and `arm`. The `arm` library has a useful function `display` which you can use to present a brief summary of the models. Delete any records with `past.arrests==0`. Change the `eth` variable to a factor where "1"="Black", "2"="Hispanic", "3"="White".  (5 points)
+b) Plot a histogram of the number of stops (3 points)
+c) Fit 3 different Poisson models i) Intercept only ii) Add ethnicity iii) Add ethnicity & precinct (6 points)
+d) Use `display` to examine model i & ii. (4 points)
+e) Use summary to display only the first 5 coefficients of model iii. How many coefficients are included in this model? (5 points)
+f) Using model iii compared to blacks (reference group) what is the probability of being stopped if white? (2 points)
+</div>
+
+```{r}
+# insert R code here
+#install.packages("arm")
+library(arm)
+
+q4.data <- read.table("police1.txt", header = TRUE)
+head(q4.data)
+nrow(q4.data)
+
+q4.data.mod <- filter(q4.data, past.arrests > 0)
+str(q4.data.mod)
+q4.data.mod$eth <- as.factor(q4.data.mod$eth)
+q4.data.mod$precinct <- as.factor(q4.data.mod$precinct)
+
+levels(q4.data.mod$eth) <- c("Black", "Hispanic", "White")
+
+#plot hist of number of stops
+ggplot(data = q4.data.mod, aes(x = stops)) + geom_histogram()
+
+#3 pois models, intercep, eth, and eth + prec
+reg.int.q4 <- glm(data = q4.data.mod, formula = stops ~ 1 + offset(log(past.arrests)), family = poisson)
+summary(reg.int.q4)
+
+reg.eth.q4 <- glm(data = q4.data.mod, formula = stops ~ eth + offset(log(past.arrests)), family = poisson(link = "log"))
+summary(reg.eth.q4)
+
+reg.multi.q4 <- glm(data = q4.data.mod, formula = stops ~ eth + precinct + offset(log(past.arrests)), family = poisson)
+summary(reg.multi.q4)
+
+#use display on 1st two mmodels
+display(reg.int.q4)
+display(reg.eth.q4)
+
+#use summary to display for model iii
+sum.reg.multi.q4 <- summary(reg.multi.q4)
+sum.reg.multi.q4
+
+#display first five coefficients....this has intercept as well
+sum.reg.multi.q4$coefficients[1:5,]
+
+#from model iii, what is the prob of white being stopped compared to black (reference group)
+exp(sum.reg.multi.q4$coefficients[3,1])
+#ajusting for precint, the probability of white person being stopped is 0.35 lower than a black person being stopped, with # of past arrests used as the baseline....whatever that means. 
+
+```
+
+
+<div id="body">
+**Type your answer here:**     
+
+
+</div>   
+
+## Question 5 - 10 points
+The `deviance` parameter is helpful in choosing the best model.
+<div id="exercise">
+**Exercise**:     
+a) What is the deviance for each of the 3 models constructed above? (5 points)    
+b) Based on these values, which model is the best? Explain your answer (5 points) 
+</div>
+
+```{r}
+# insert R code here
+reg.int.q4$deviance
+#resid deviance 184000
+
+reg.eth.q4$deviance
+#resid deviance 183300
+
+reg.multi.q4$deviance
+#resid devance 141300
+
+nrow(q4.data.mod)
+
+```
+
+<div id="body">
+**Type your answer here:**      
+The third model has the lowest residual deviance. This means it is the best. Keep in mind that we have added extra terms, so this always brings down the residual deviance. There is no penalty for "over-fitting". In this case, we have 3 parameters for 899 observations. I feel confident we are not in danger of overfitting. 
+
+
+</div>   
+
+## Question 6 - 10 points
+In a Poisson distribution the var() / mean () should equal 1. However in many cases, this ratio is > 1, a situation referred to as overdispersion. Overdispersion is often best appreciated by graphical methods of standardized residuals versus predicted values. Here is the plot from the for the police stops model iii.     
+![](over_disp.png)     
+
+As expected from the model, the variance of the residuals increases as predicted values increase. The standardized
+residuals should have mean 0 and standard deviation 1 (hence the lines at ±2 indicating
+approximate 95% error bounds). The variance of the standardized residuals is much greater than 1, indicating a large amount of overdispersion for this model
+<div id="exercise">
+**Exercise**: 
+a) Reproduce this graph (Hint standardized residuals $$z_{i} = \dfrac{y_{i} - \hat{y}_{i}}{sd(\hat{y}_{i})} = \dfrac{y_{i} - \mu_{1}\hat{\theta}_{i}}{\sqrt{\mu_{1}\hat{\theta}_{i}}}$$)
+</div>
+
+```{r}
+# insert R code here
+
+#standardize the residuals
+stand.res <- (reg.multi.q4$residuals - mean(reg.multi.q4$residuals)) / sd(reg.multi.q4$residuals)
+#the fitted values
+fitted <- reg.multi.q4$fitted.values
+
+fitted - predict(reg.multi.q4, type = "response")
+
+reg.multi.q4$fitted.values
+
+#checking to make sure the standarization worked and to look at that outlier
+mean(stand.res)
+sd(stand.res)
+max(stand.res)
+
+#put them in data frame
+q6.data <- data.frame(q4.data.mod, stand.res, fitted, reg.multi.q4$residuals)
+q6.data
+
+#plot it, the standardized residuals
+ggplot(data = q6.data, aes(x = fitted, y = stand.res, color = eth)) + geom_point() + geom_hline(yintercept=0) + labs(title = "Testing for overdisperson", y = "Standardized Residuals", x = "Fitted values", color = "Race") + scale_x_continuous(limits = c(0, 1500)) + scale_y_continuous(limits = c(-2.5, 23)) 
+
+#non-standardized residuals
+#ggplot(data = q6.data, aes(x = fitted, y = reg.multi.q4$residuals, color = eth)) + geom_point() + geom_hline(yintercept=0) + labs(title = "Testing for overdisperson", y = "Residuals", x = "Fitted values", color = "Race") + scale_x_continuous(limits = c(0, 1500)) + scale_y_continuous(limits = c(-2.5, 11)) 
+
+```
+
+
+## Question 7 - 9 points
+There are 3 ways to deal with overdispersion 1. `quasipoisson` - introduce a dispersion parameter that is not assumed to be fixed at 1 but is estimated from the data. This strategy leads to the same coefficient estimates as the standard Poisson model but inference is adjusted for over-dispersion. 2. `sandwich estimators` 3. `negative binomial` model
+<div id="exercise">
+**Exercise**: 
+a) Fit model iii using the `quasipossion` family (3 points)        
+b) Compare and discuss the parameter estimates for this new model with the previous one (3 points)         
+c) Give the absolute width of the CI for the parameter estimate for white ethnicity for these 2 models (3 points) 
+</div>
+
+```{r}
+# insert R code here
+reg.qua.q7 <- glm(data = q4.data.mod, formula = stops ~ eth + precinct + offset(log(past.arrests)), family = quasipoisson)
+summary(reg.qua.q7)
+
+#what the difference? Like nothing, right?
+min(reg.qua.q7$coefficients - reg.multi.q4$coefficients)
+
+
+
+```
+
+<div id="body">
+**Type your answer here:**         
+
+</div>   
