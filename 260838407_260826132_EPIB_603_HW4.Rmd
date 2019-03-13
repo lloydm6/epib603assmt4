@@ -450,6 +450,15 @@ ggplot(data = q6.data, aes(x = fitted, y = stand.res, color = eth)) + geom_point
 #non-standardized residuals
 #ggplot(data = q6.data, aes(x = fitted, y = reg.multi.q4$residuals, color = eth)) + geom_point() + geom_hline(yintercept=0) + labs(title = "Testing for overdisperson", y = "Residuals", x = "Fitted values", color = "Race") + scale_x_continuous(limits = c(0, 1500)) + scale_y_continuous(limits = c(-2.5, 11)) 
 
+#the complete other way to do it according to people who visited the TAs
+yhat <- fitted
+
+#from the equation given in the question
+z <- (q6.data$stops - yhat)/sqrt(yhat)
+length(z)
+
+ggplot(data = q6.data, aes(x = fitted, y = z, color = eth)) + geom_point() + geom_hline(yintercept=0) + geom_hline(yintercept=2) + geom_hline(yintercept=-2) + labs(title = "Testing for overdisperson", y = "Standardized Residuals", x = "Fitted values", color = "Race") + scale_x_continuous(limits = c(0, 1000)) + scale_y_continuous(limits = c(-10, 10)) 
+
 ```
 
 
